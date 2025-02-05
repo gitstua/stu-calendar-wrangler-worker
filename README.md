@@ -1,6 +1,6 @@
 # iCal to JSON Converter Worker
 
-A Cloudflare Worker that converts iCal/ICS calendar feeds into a structured JSON format, with support for timezone conversion and multi-day events.
+A Cloudflare Worker hosted API that converts iCal/ICS calendar feeds into a structured JSON format, with support for timezone conversion and multi-day events.
 
 ## Features
 
@@ -10,6 +10,9 @@ A Cloudflare Worker that converts iCal/ICS calendar feeds into a structured JSON
 - Handles all-day and multi-day events
 - API key authentication
 - CORS enabled
+
+## Note
+Requires a runtime license key
 
 ## License
 
