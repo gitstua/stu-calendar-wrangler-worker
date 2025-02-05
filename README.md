@@ -146,21 +146,17 @@ X-API-Key: your-api-key (begins with stucal_ and is 16 characters long)
 ### Example Requests
 
 ```bash
-# Basic usage (only future events)
-curl -X GET "https://<your-worker>.workers.dev?url=https://example.com/calendar.ics" \
-  -H "X-API-Key: your-api-key"
+# Basic usage with HTTPS URL
+https://your-worker.workers.dev/?url=https://calendar.google.com/calendar/ical/example%40gmail.com/public/basic.ics
 
-# All parameters
-curl -X GET "https://<your-worker>.workers.dev?\
-url=https://example.com/calendar.ics&\
-days=14&\
-timezone=America/New_York&\
-startFrom=2024-02-01" \
-  -H "X-API-Key: your-api-key"
+# Using webcal URL (automatically converted to HTTPS)
+https://your-worker.workers.dev/?url=webcal://p45-caldav.icloud.com/published/2/MTY1NjA0NjE000NjU2MDhR000JzNGVwkKsdh9cdD2mTNdHdSjo5v9vy1cbHUhf6qjU2NaOL8x0ob3Vwm-Q-2AWtnSj6iZZOvD5iHUAAA
 
-# URL-encoded version (single line)
-curl -X GET "https://<your-worker>.workers.dev?url=https%3A%2F%2Fexample.com%2Fcalendar.ics&days=14&timezone=America%2FNew_York&startFrom=2024-02-01" -H "X-API-Key: your-api-key"
+# Full example with all parameters
+https://your-worker.workers.dev/?url=webcal://p45-caldav.icloud.com/published/2/example.ics&days=14&timezone=America/New_York&startFrom=2024-02-01
 ```
+
+Note: Make sure to URL encode the calendar URL if it contains special characters.
 
 Parameters explained:
 - `url`: The calendar feed URL (required)

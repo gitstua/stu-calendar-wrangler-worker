@@ -154,12 +154,8 @@ export default {
 				});
 			}
 
-			const icsUrl = url.searchParams.get('url');
-			const days = parseInt(url.searchParams.get('days')) || 7;
-			const timezone = url.searchParams.get('timezone') || 'UTC';
-			const startFrom = url.searchParams.get('startFrom') || 'now';
-
-			if (!icsUrl) {
+			let icalUrl = url.searchParams.get('url');
+			if (!icalUrl) {
 				return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
 					status: 400,
 					headers: { 
@@ -169,14 +165,23 @@ export default {
 				});
 			}
 
-			const response = await fetch(icsUrl);
+			// Convert webcal to https
+			if (icalUrl.startsWith('webcal://')) {
+				icalUrl = 'https://' + icalUrl.substring(9);
+			}
+
+			const days = parseInt(url.searchParams.get('days')) || 7;
+			const timezone = url.searchParams.get('timezone') || 'UTC';
+			const startFrom = url.searchParams.get('startFrom') || 'now';
+
+			const response = await fetch(icalUrl);
 			if (!response.ok) {
 				throw new Error(`Failed to fetch calendar: ${response.status} ${response.statusText}`);
 			}
 			const icsText = await response.text();
 
 			const events = parseICS(icsText);
-			const groupedEvents = createGroupedEvents(events, days, timezone, icsUrl, startFrom);
+			const groupedEvents = createGroupedEvents(events, days, timezone, icalUrl, startFrom);
 
 			return new Response(JSON.stringify(groupedEvents), {
 				headers: { 
