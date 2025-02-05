@@ -45,10 +45,39 @@ This project is licensed under the [Creative Commons Attribution-NonCommercial 4
    wrangler login
    ```
 
-5. Create a `.dev.vars` file in the project root for local development:
+5. Create a `.env` file in the project root:
+   ```bash
+   cp .env.example .env
+   ```
+
+6. Edit `.env` with your secret key:
    ```plaintext
-   MASTER_KEY=dev-secret
-   ENVIRONMENT=development
+   MASTER_KEY=your-secret-key-here
+   ```
+
+6. Update your `wrangler.toml` configuration:
+   ```toml
+   name = "your-worker-name"
+   main = "src/index.js"
+   compatibility_date = "2024-01-01"
+
+   [vars]
+   ENVIRONMENT = "production"
+
+   # Enable Node.js compatibility
+   compatibility_flags = ["nodejs_compat"]
+
+   # Configure builds
+   [build]
+   command = "npm install"
+
+   # Configure dev environment
+   [dev]
+   port = 8787
+
+   # Configure logging
+   [observability.logs]
+   enabled = false
    ```
 
 ## Development
@@ -63,6 +92,12 @@ This project is licensed under the [Creative Commons Attribution-NonCommercial 4
    npm run dev
    ```
 
+   or 
+
+   ```bash
+   wrangler dev
+   ```
+
 3. Run tests:
    ```bash
    npm test
@@ -70,20 +105,9 @@ This project is licensed under the [Creative Commons Attribution-NonCommercial 4
 
 ## Deployment
 
-1. Create your production environment file:
+1. Deploy to production:
    ```bash
-   cp .env.production.example .env.production
-   ```
-
-2. Edit .env.production with your production secrets:
-   ```plaintext
-   MASTER_KEY=your-actual-production-key
-   ENVIRONMENT=production
-   ```
-
-3. Deploy to production:
-   ```bash
-   wrangler deploy --env production
+   wrangler deploy
    ```
 
 ## API Usage
@@ -103,7 +127,7 @@ The JSON output for the sample iCal file can be found [here](examples/sample-out
 ### Headers
 
 ```
-X-API-Key: your-api-key
+X-API-Key: your-api-key (begins with stucal_ and is 16 characters long)
 ```
 
 ### Query Parameters
@@ -194,7 +218,33 @@ If you want to create a new worker from scratch:
 
    [vars]
    ENVIRONMENT = "production"
+
+   # Enable Node.js compatibility
+   compatibility_flags = ["nodejs_compat"]
+
+   # Configure builds
+   [build]
+   command = "npm install"
+
+   # Configure dev environment
+   [dev]
+   port = 8787
+
+   # Configure logging
+   [observability.logs]
+   enabled = false
    ```
+
+## Troubleshooting
+
+### API Key
+- If you encounter issues with the API key, you can generate a new one by running `./scripts/generate-key.sh`.
+- Make sure you have set the MASTER_KEY in the `.env` file.
+
+### ical
+This has been tested only with Google Calendar feeds.
+
+Check 
 
 ## Contributing
 

@@ -1,9 +1,21 @@
 #!/bin/bash
 
+# This is a wrapper script for the generate-api-key.js script
+# It prompts for the expiry date and runs the Node.js script with the expiry date
+
 set -e  # Exit on error
 
 echo "API Key Generator"
 echo "----------------"
+
+
+echo checking node is installed
+if ! command -v node &> /dev/null; then
+    echo "node could not be found"
+    exit 1
+fi
+
+
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
