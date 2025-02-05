@@ -1,6 +1,7 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
 import worker from '../src';
+import { DateTime } from 'luxon';
 
 describe('Hello World worker', () => {
 	it('responds with Hello World! (unit style)', async () => {
@@ -163,5 +164,25 @@ describe('iCal to JSON converter', () => {
 		const event = march20.events[0];
 		expect(event.timezone).toBe('America/New_York');
 		expect(event.start).toMatch(/T\d{2}:00:00/); // Should be in NY time
+	});
+
+	it('respects the startFrom parameter', async () => {
+		const request = new Request(
+			`http://example.com?url=${encodeURIComponent(testIcalUrl)}&startFrom=2024-01-01`
+		);
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		
+		const result = await response.json();
+		
+		// Verify startFrom is included in request info
+		expect(result.request.startFrom).toBe('2024-01-01T00:00:00.000Z');
+		
+		// Verify no events before the startFrom date
+		result.agenda.forEach(day => {
+			const dayDate = DateTime.fromISO(day.date);
+			expect(dayDate >= DateTime.fromISO('2024-01-01')).toBe(true);
+		});
 	});
 });

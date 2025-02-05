@@ -139,13 +139,34 @@ X-API-Key: your-api-key (begins with stucal_ and is 16 characters long)
 - `url` (required): URL of the iCal/ICS feed
 - `days` (optional): Number of days to fetch (default: 7)
 - `timezone` (optional): Target timezone (default: UTC)
+- `startFrom` (optional): Start date cutoff (default: "now")
+  - Use "now" to only show future events
+  - Or provide an ISO date string (e.g., "2024-02-01") to include events from that date forward
 
-### Example Request
+### Example Requests
 
 ```bash
-curl -X GET "https://<your-worker>.workers.dev?url=https://example.com/calendar.ics&days=7&timezone=America/New_York" \
+# Basic usage (only future events)
+curl -X GET "https://<your-worker>.workers.dev?url=https://example.com/calendar.ics" \
   -H "X-API-Key: your-api-key"
+
+# All parameters
+curl -X GET "https://<your-worker>.workers.dev?\
+url=https://example.com/calendar.ics&\
+days=14&\
+timezone=America/New_York&\
+startFrom=2024-02-01" \
+  -H "X-API-Key: your-api-key"
+
+# URL-encoded version (single line)
+curl -X GET "https://<your-worker>.workers.dev?url=https%3A%2F%2Fexample.com%2Fcalendar.ics&days=14&timezone=America%2FNew_York&startFrom=2024-02-01" -H "X-API-Key: your-api-key"
 ```
+
+Parameters explained:
+- `url`: The calendar feed URL (required)
+- `days`: Number of days to fetch, e.g. 14 (default: 7)
+- `timezone`: Target timezone, e.g. America/New_York (default: UTC)
+- `startFrom`: Start date cutoff, e.g. 2024-02-01 or "now" (default: "now")
 
 ### Example Response
 

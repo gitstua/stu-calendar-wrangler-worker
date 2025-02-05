@@ -157,6 +157,7 @@ export default {
 			const icsUrl = url.searchParams.get('url');
 			const days = parseInt(url.searchParams.get('days')) || 7;
 			const timezone = url.searchParams.get('timezone') || 'UTC';
+			const startFrom = url.searchParams.get('startFrom') || 'now';
 
 			if (!icsUrl) {
 				return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
@@ -175,7 +176,7 @@ export default {
 			const icsText = await response.text();
 
 			const events = parseICS(icsText);
-			const groupedEvents = createGroupedEvents(events, days, timezone, icsUrl);
+			const groupedEvents = createGroupedEvents(events, days, timezone, icsUrl, startFrom);
 
 			return new Response(JSON.stringify(groupedEvents), {
 				headers: { 
@@ -291,9 +292,25 @@ function convertToTimezone(isoDate, timezone) {
 		.toISO();
 }
 
-function createGroupedEvents(events, days, timezone, requestUrl) {
+function createGroupedEvents(events, days, timezone, requestUrl, startFrom = 'now') {
 	const now = DateTime.now().setZone(timezone).startOf('day');
 	const endDate = now.plus({ days });
+	
+	// Parse the startFrom parameter
+	let cutoffDate;
+	if (startFrom === 'now') {
+		cutoffDate = now;
+	} else {
+		try {
+			cutoffDate = DateTime.fromISO(startFrom).setZone(timezone).startOf('day');
+			if (!cutoffDate.isValid) {
+				throw new Error('Invalid date');
+			}
+		} catch (e) {
+			console.warn('Invalid startFrom date, defaulting to now:', startFrom);
+			cutoffDate = now;
+		}
+	}
 
 	// Group events by date
 	const groupedByDate = {};
@@ -302,8 +319,8 @@ function createGroupedEvents(events, days, timezone, requestUrl) {
 		const start = DateTime.fromISO(event.start).setZone(timezone);
 		const end = DateTime.fromISO(event.end).setZone(timezone);
 
-		// Skip events that end before now
-		if (end < now) return;
+		// Skip events that end before cutoff date
+		if (end < cutoffDate) return;
 
 		// Skip events that start after endDate
 		if (start > endDate) return;
@@ -385,13 +402,15 @@ function createGroupedEvents(events, days, timezone, requestUrl) {
 		}
 	};
 
+	// Return with request information
 	return {
 		agenda,
 		timezone,
 		request: {
 			calendar: getCalendarDomain(requestUrl),
 			days,
-			requestedTimezone: timezone
+			requestedTimezone: timezone,
+			startFrom: cutoffDate.toISO()
 		}
 	};
 }
