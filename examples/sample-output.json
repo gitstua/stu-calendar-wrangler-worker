@@ -1,0 +1,40 @@
+{
+  "agenda": [
+    {
+      "date": "2024-01-01",
+      "events": [
+        {
+          "title": "Sample Event",
+          "start": "2024-01-01T10:00:00.000+00:00",
+          "end": "2024-01-01T11:00:00.000+00:00",
+          "description": "This is a sample event description.",
+          "location": "Sample Location",
+          "isFullDay": false,
+          "crossDay": false,
+          "timezone": "UTC"
+        }
+      ]
+    },
+    {
+      "date": "2024-01-02",
+      "events": [
+        {
+          "title": "Another Event",
+          "start": "2024-01-02T12:00:00.000+00:00",
+          "end": "2024-01-02T13:00:00.000+00:00",
+          "description": "This is another sample event description.",
+          "location": "Another Location",
+          "isFullDay": false,
+          "crossDay": false,
+          "timezone": "UTC"
+        }
+      ]
+    }
+  ],
+  "timezone": "UTC",
+  "request": {
+    "calendar": "calendar.google.com",
+    "days": 7,
+    "requestedTimezone": "UTC"
+  }
+} 

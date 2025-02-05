@@ -1,0 +1,21 @@
+name = "stucal-92a1"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Specify the Node.js compatibility flags
+compatibility_flags = ["nodejs_compat"]
+
+# Configure builds
+[build]
+command = "npm install"
+
+# Configure dev environment
+[dev]
+port = 8787
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = false 
