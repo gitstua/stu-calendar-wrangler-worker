@@ -11,8 +11,9 @@ A Cloudflare Worker hosted API that converts iCal/ICS calendar feeds into a stru
 - API key authentication
 - CORS enabled
 
-## Note
-Requires a runtime license key
+## Notes
+- Requires a runtime license key
+- Returns only future events
 
 ## License
 
