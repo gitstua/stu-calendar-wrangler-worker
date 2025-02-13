@@ -174,35 +174,71 @@ export default {
 			const timezone = url.searchParams.get('timezone') || 'UTC';
 			const startFrom = url.searchParams.get('startFrom') || 'now';
 
-			const response = await fetch(icalUrl);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch calendar: ${response.status} ${response.statusText}`);
+			try {
+				const response = await fetch(icalUrl);
+				
+				if (!response.ok) {
+					console.error(`HTTP error! status: ${response.status}, statusText: ${response.statusText}`);
+					const errorBody = await response.text();
+					console.error('Error response body:', errorBody);
+					
+					return new Response(JSON.stringify({
+						error: 'Failed to fetch calendar',
+						status: response.status,
+						statusText: response.statusText,
+						details: errorBody
+					}), {
+						status: response.status,
+						headers: {
+							'Content-Type': 'application/json',
+							'Access-Control-Allow-Origin': '*'
+						}
+					});
+				}
+
+				const icalData = await response.text();
+
+				const events = parseICS(icalData);
+				const groupedEvents = createGroupedEvents(events, days, timezone, icalUrl, startFrom);
+
+				return new Response(JSON.stringify(groupedEvents), {
+					headers: { 
+						'Content-Type': 'application/json',
+						'Access-Control-Allow-Origin': '*'
+					},
+				});
+			} catch (fetchError) {
+				console.error('Fetch error details:', {
+					message: fetchError.message,
+					stack: fetchError.stack,
+					url: icalUrl
+				});
+
+				return new Response(JSON.stringify({
+					error: 'Failed to fetch calendar',
+					message: fetchError.message,
+					url: icalUrl
+				}), {
+					status: 500,
+					headers: {
+						'Content-Type': 'application/json',
+						'Access-Control-Allow-Origin': '*'
+					}
+				});
 			}
-			const icsText = await response.text();
-
-			const events = parseICS(icsText);
-			const groupedEvents = createGroupedEvents(events, days, timezone, icalUrl, startFrom);
-
-			return new Response(JSON.stringify(groupedEvents), {
-				headers: { 
-					'Content-Type': 'application/json',
-					'Access-Control-Allow-Origin': '*'
-				},
-			});
 		} catch (error) {
-			console.error('Error in fetch:', {
-				error: error.message,
+			console.error('General error:', {
+				message: error.message,
 				stack: error.stack,
-				url: request?.url,
-				method: request?.method,
-				headers: request ? Object.fromEntries(request.headers) : 'No request object'
+				url: url?.toString()
 			});
-			return new Response(JSON.stringify({ 
-				error: error.message,
-				details: 'An unexpected error occurred'
+
+			return new Response(JSON.stringify({
+				error: 'Internal server error',
+				message: error.message
 			}), {
 				status: 500,
-				headers: { 
+				headers: {
 					'Content-Type': 'application/json',
 					'Access-Control-Allow-Origin': '*'
 				}
@@ -215,8 +251,22 @@ function parseICS(ics) {
 	const events = [];
 	const lines = ics.split(/\r?\n/);
 	let event = null;
+	let continuationLine = '';
 
 	lines.forEach(line => {
+		// Handle line continuations (lines starting with space/tab)
+		if (line.startsWith(' ') || line.startsWith('\t')) {
+			continuationLine += line.substring(1);
+			return;
+		}
+
+		// Process previous line if there was a continuation
+		if (continuationLine) {
+			processEventLine(continuationLine, event);
+			continuationLine = '';
+		}
+
+		// Process current line
 		if (line.startsWith('BEGIN:VEVENT')) {
 			event = {};
 		} else if (line.startsWith('END:VEVENT')) {
@@ -225,39 +275,71 @@ function parseICS(ics) {
 			}
 			event = null;
 		} else if (event) {
-			const [key, ...valueParts] = line.split(':');
-			if (key && valueParts.length) {
-				const value = valueParts.join(':').trim();
-				const keyParts = key.split(';');
-				const mainKey = keyParts[0].trim();
-				
-				// Handle all-day events
-				if (keyParts.some(part => part.includes('VALUE=DATE'))) {
-					event.isAllDay = true;
-				}
-				
-				event[mainKey] = value;
-			}
+			processEventLine(line, event);
 		}
 	});
 
 	return events;
 }
 
+function processEventLine(line, event) {
+	const [key, ...valueParts] = line.split(':');
+	if (key && valueParts.length) {
+		const value = valueParts.join(':').trim();
+		const keyParts = key.split(';');
+		const mainKey = keyParts[0].trim();
+		
+		// Handle parameters in key (e.g. DTSTART;TZID=Australia/Sydney)
+		const params = {};
+		keyParts.slice(1).forEach(param => {
+			const [paramName, paramValue] = param.split('=');
+			params[paramName] = paramValue;
+		});
+
+		// Handle all-day events
+		if (params.VALUE === 'DATE' || mainKey === 'DTSTART' || mainKey === 'DTEND') {
+			event.isAllDay = params.VALUE === 'DATE';
+		}
+
+		// Store timezone if specified
+		if (params.TZID) {
+			event[`${mainKey}_TZID`] = params.TZID;
+		}
+		
+		event[mainKey] = value;
+	}
+}
+
 function formatEvent(event) {
-	const start = parseICSDate(event.DTSTART, event.isAllDay);
-	const end = parseICSDate(event.DTEND || event.DTSTART, event.isAllDay);
+	// Parse start date/time considering timezone
+	const start = parseICSDate(
+		event.DTSTART,
+		event.isAllDay,
+		event.DTSTART_TZID
+	);
 	
+	// Parse end date/time considering timezone
+	const end = parseICSDate(
+		event.DTEND || event.DTSTART,
+		event.isAllDay, 
+		event.DTEND_TZID || event.DTSTART_TZID
+	);
+
 	return {
 		title: event.SUMMARY || '',
 		start: start.toISO(),
 		end: end.toISO(),
 		description: event.DESCRIPTION || '',
+		location: event.LOCATION || '',
 		isAllDay: event.isAllDay || false,
+		timezone: event.DTSTART_TZID || 'UTC',
+		uid: event.UID || '',
+		created: event.CREATED ? parseICSDate(event.CREATED).toISO() : null,
+		lastModified: event.LAST_MODIFIED ? parseICSDate(event.LAST_MODIFIED).toISO() : null,
 	};
 }
 
-function parseICSDate(icsDate, isAllDay = false) {
+function parseICSDate(icsDate, isAllDay = false, timezone = 'UTC') {
 	if (!icsDate) return DateTime.now();
 
 	// Remove any timezone identifier
@@ -267,10 +349,13 @@ function parseICSDate(icsDate, isAllDay = false) {
 		const match = icsDate.match(/^(\d{4})(\d{2})(\d{2})$/);
 		if (match) {
 			const [_, year, month, day] = match;
-			return DateTime.utc(
-				parseInt(year),
-				parseInt(month),
-				parseInt(day)
+			return DateTime.fromObject(
+				{
+					year: parseInt(year),
+					month: parseInt(month),
+					day: parseInt(day)
+				},
+				{ zone: timezone }
 			);
 		}
 	}
@@ -278,13 +363,16 @@ function parseICSDate(icsDate, isAllDay = false) {
 	const match = icsDate.match(/^(\d{4})(\d{2})(\d{2})T?(\d{2})?(\d{2})?(\d{2})?$/);
 	if (match) {
 		const [, year, month, day, hour = '00', minute = '00', second = '00'] = match;
-		return DateTime.utc(
-			parseInt(year),
-			parseInt(month),
-			parseInt(day),
-			parseInt(hour),
-			parseInt(minute),
-			parseInt(second)
+		return DateTime.fromObject(
+			{
+				year: parseInt(year),
+				month: parseInt(month),
+				day: parseInt(day),
+				hour: parseInt(hour),
+				minute: parseInt(minute),
+				second: parseInt(second)
+			},
+			{ zone: timezone }
 		);
 	}
 

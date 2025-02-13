@@ -166,3 +166,6 @@ dist
 # wrangler project
 
 .wrangler/
+
+tmp/
+.DS_Store
